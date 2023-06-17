@@ -17,12 +17,27 @@ import random
 import tarfile
 import requests
 
+from database import do_update, define_database
+
 api_name = Path(__file__).stem
 app = Blueprint(api_name, __name__, url_prefix = "/" + api_name)
 
 app_data_folder = Path(config.Common.DATA_FOLDER) / api_name
 app_content_folder = Path(config.Common.CONTENT_FOLDER) / api_name
 
+# telemetry database
+telemetry_primary_structure = {
+    "uuid": "varchar(36) primary key", # make uuid unique, so that it only records latest launch
+    "version": "varchar(30)",
+    "os": "varchar(30)",
+    "crash_count": "int",
+}
+
+telemetry_primary_table = {
+    "telemetry": telemetry_primary_structure,
+}
+
+telemetry_db = None
 
 store_folders = [ "patterns", "includes", "magic", "constants", "yara", "encodings", "nodes", "themes" ]
 tips_folder = "tips"
@@ -33,6 +48,10 @@ def setup():
 
 def init():
     update_data()
+    print("Setting up telemetry database...")
+    global telemetry_db
+    telemetry_db = define_database("imhex/telemetry", telemetry_primary_table)
+    print("Done!")
 
 def update_git_repo(repo):
     repo_dir = app_data_folder / repo
@@ -51,7 +70,8 @@ def update_data():
         
         shutil.copytree(f'{file_repo_dir}/magic/Magdir/', app_data_folder / "ImHex-Patterns/magic/standard_magic")
 
-        shutil.rmtree(app_content_folder)
+        if app_content_folder.exists():
+            shutil.rmtree(app_content_folder)
         os.makedirs(app_content_folder)
 
         print("Taring...")
@@ -214,6 +234,25 @@ def get_update_link(release, os):
     else:
         return ""
 
+@app.route("/telemetry", methods = [ 'POST' ])
+def post_telemetry():
+    data = request.json
+
+    if data is None:
+        return Response(status = 400)
+    
+    # make the keys sorted in same order as the structure
+    data = {}
+    for key in telemetry_primary_structure.keys():
+        if key in request.json:
+            data[key] = request.json[key]
+        else:
+            return Response(status = 400)
+    
+    do_update(telemetry_db, telemetry_primary_structure, "telemetry", data)
+
+    return Response(status = 200, response="OK")
+    
 @app.route("/pattern_count")
 def get_pattern_count():
     return str(len([file for file in (app_data_folder / "ImHex-Patterns" / "patterns").iterdir() if file.is_file()]))

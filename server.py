@@ -32,6 +32,7 @@ for file in __all__:
     def base():
         return file.capitalize() + " API Endpoint"
 
+    module.setup()
     module.init()
     app.register_blueprint(module.app)
 
