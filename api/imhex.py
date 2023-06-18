@@ -17,7 +17,7 @@ import random
 import tarfile
 import requests
 
-from database import do_update, define_database
+from telemetry import update_telemetry, increment_crash_count, current_statistics, setup_background_task
 
 api_name = Path(__file__).stem
 app = Blueprint(api_name, __name__, url_prefix = "/" + api_name)
@@ -25,33 +25,17 @@ app = Blueprint(api_name, __name__, url_prefix = "/" + api_name)
 app_data_folder = Path(config.Common.DATA_FOLDER) / api_name
 app_content_folder = Path(config.Common.CONTENT_FOLDER) / api_name
 
-# telemetry database
-telemetry_primary_structure = {
-    "uuid": "varchar(36) primary key", # make uuid unique, so that it only records latest launch
-    "version": "varchar(30)",
-    "os": "varchar(30)",
-    "crash_count": "int",
-}
-
-telemetry_primary_table = {
-    "telemetry": telemetry_primary_structure,
-}
-
-telemetry_db = None
-
 store_folders = [ "patterns", "includes", "magic", "constants", "yara", "encodings", "nodes", "themes" ]
 tips_folder = "tips"
 
 def setup():
     os.system(f"git -C {app_data_folder} clone https://github.com/WerWolv/ImHex-Patterns --recurse-submodules")
     os.system(f"git -C {app_data_folder} clone https://github.com/file/file")
+    print("Setting up statistics background task...")
+    setup_background_task()
 
 def init():
     update_data()
-    print("Setting up telemetry database...")
-    global telemetry_db
-    telemetry_db = define_database("imhex/telemetry", telemetry_primary_table)
-    print("Done!")
 
 def update_git_repo(repo):
     repo_dir = app_data_folder / repo
@@ -120,6 +104,8 @@ def crash_upload():
 
     if file.filename == "":
         return Response(status = 400)
+
+    increment_crash_count()
 
     webhook_data = {
         "content": "New crash report!"
@@ -234,6 +220,7 @@ def get_update_link(release, os):
     else:
         return ""
 
+required_telemetry_post_fields = [ "uuid", "version", "os" ]
 @app.route("/telemetry", methods = [ 'POST' ])
 def post_telemetry():
     data = request.json
@@ -241,17 +228,24 @@ def post_telemetry():
     if data is None:
         return Response(status = 400)
     
-    # make the keys sorted in same order as the structure
-    data = {}
-    for key in telemetry_primary_structure.keys():
-        if key in request.json:
-            data[key] = request.json[key]
-        else:
-            return Response(status = 400)
+    if not all(key in data for key in required_telemetry_post_fields):
+        return Response(status = 400)
     
-    do_update(telemetry_db, telemetry_primary_structure, "telemetry", data)
+    update_telemetry(data["uuid"], data["version"], data["os"])
 
     return Response(status = 200, response="OK")
+
+@app.route("/telemetry", methods = [ 'GET' ])
+def get_telemetry():
+    signature = hmac.new(config.ImHexApi.SECRET, request.data, hashlib.sha1).hexdigest()
+
+    if "X-Hub-Signature" not in request.headers:
+        return Response(status = 401)
+    
+    if hmac.compare_digest(signature, request.headers['X-Hub-Signature'].split('=')[1]):
+        return current_statistics
+    
+    return Response(status = 401)
     
 @app.route("/pattern_count")
 def get_pattern_count():

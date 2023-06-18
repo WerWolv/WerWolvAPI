@@ -23,12 +23,12 @@ def define_database(name, tables, path=None):
 
     return db
 
-def do_update(db, structure, where, data):
+def do_update(db, where, data):
     # build query
-    query = f"INSERT OR REPLACE INTO {where} ({', '.join(structure.keys())}) VALUES ({', '.join(['?' for _ in structure.keys()])})"
+    query = f"INSERT OR REPLACE INTO {where} ({', '.join(data.keys())}) VALUES ({', '.join(['?' for _ in data.keys()])})"
 
-    # execute query
+    # order data according to structure
     db.execute(query, tuple(data.values()))
 
     # commit changes
-    db.commit()
+    db.commit()  
