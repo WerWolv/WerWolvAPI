@@ -101,7 +101,7 @@ def update_data():
 
     # make it into json
     import json
-    statistics_json = json.dumps(statistics, indent = 4)
+    statistics_json = json.dumps(statistics)
 
     # write it to file
     with open("data/imhex/statistics.json", "w") as fd:

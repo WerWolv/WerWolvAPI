@@ -11,6 +11,7 @@ from cache import cache
 
 import hashlib
 import hmac
+import secrets
 import json
 from datetime import date
 import random
@@ -237,13 +238,11 @@ def post_telemetry():
 
 @app.route("/telemetry", methods = [ 'GET' ])
 def get_telemetry():
-    signature = hmac.new(config.ImHexApi.SECRET, request.data, hashlib.sha1).hexdigest()
-
-    if "X-Hub-Signature" not in request.headers:
-        return Response(status = 401)
-    
-    if hmac.compare_digest(signature, request.headers['X-Hub-Signature'].split('=')[1]):
-        return current_statistics
+    if "Authorization" in request.headers:
+        if secrets.compare_digest(request.headers["Authorization"], config.ImHexApi.SECRET):
+            return current_statistics
+        else:
+            return Response(status = 401)
     
     return Response(status = 401)
     
