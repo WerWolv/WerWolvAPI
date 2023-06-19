@@ -13,9 +13,16 @@ telemetry_crash_count_history_structure = {
     "timestamp": "date default current_date primary key",
     "crash_count": "int"
 }
+
+telemetry_unique_users_history_structure = {
+    "timestamp": "date default current_date primary key",
+    "unique_users": "int" # unique users is always increasing, so we can just store the latest value
+}
+
 telemetry_tables = {
     "telemetry": telemetry_primary_structure,
-    "crash_count_history": telemetry_crash_count_history_structure
+    "crash_count_history": telemetry_crash_count_history_structure,
+    "unique_users_history": telemetry_unique_users_history_structure
 }
 
 telemetry_db = define_database("imhex/telemetry", telemetry_tables)
@@ -23,6 +30,10 @@ telemetry_db = define_database("imhex/telemetry", telemetry_tables)
 current_statistics = {}
 
 def update_telemetry(uuid, version, os):
+    # check if the user is already in the database
+    if telemetry_db.execute("SELECT * FROM telemetry WHERE uuid = ?", (uuid,)).fetchone() is None:
+        # increment unique users
+        increment_unique_users()
     do_update(telemetry_db, ["uuid", "version", "os"], "telemetry", {
         "uuid": uuid,
         "version": version,
@@ -35,6 +46,20 @@ def increment_crash_count():
     # todo: abstract and generify this
     telemetry_db.execute("INSERT OR REPLACE INTO crash_count_history (timestamp, crash_count) VALUES (?, COALESCE((SELECT crash_count FROM crash_count_history WHERE timestamp = ?), 0) + 1)", (today, today))
     telemetry_db.commit()
+
+def increment_unique_users():
+    today = date.today()
+    # do some sql magic
+    # todo: abstract and generify this
+    # get current unique users
+    current_unique_users = telemetry_db.execute("SELECT unique_users FROM unique_users_history WHERE timestamp = (SELECT MAX(timestamp) FROM unique_users_history)").fetchone()
+    if current_unique_users is None:
+        current_unique_users = 0
+
+    do_update(telemetry_db, ["timestamp", "unique_users"], "unique_users_history", {
+        "timestamp": today,
+        "unique_users": current_unique_users + 1
+    })
 
 def make_statistics():
     # obtain all telemetry data
