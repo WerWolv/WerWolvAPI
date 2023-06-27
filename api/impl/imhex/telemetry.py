@@ -1,4 +1,5 @@
 from api.impl.imhex.database import define_database, do_update
+import config
 from datetime import date, datetime, timedelta
 
 # telemetry database
@@ -32,15 +33,24 @@ telemetry_tables = {
     "unique_users_history": telemetry_unique_users_history_structure
 }
 
-telemetry_db = define_database("imhex/telemetry", telemetry_tables)
+def log_db_error(e):
+    import requests
+    form_data = {
+        "content": f"```Database encountered error: {e}```"
+    }
+
+    requests.post(config.ImHexApi.DATABASE_ERROR_WEBHOOK, data=form_data)
+
+telemetry_db = define_database("imhex/telemetry", telemetry_tables,
+                            queue_period=config.ImHexApi.DATABASE_QUEUE_PERIOD,
+                            retry_period=config.ImHexApi.DATABASE_RETRY_PERIOD,
+                            error_callback=log_db_error)
 
 current_statistics = {}
 
 def update_telemetry(uuid, format_version, imhex_version, imhex_commit, install_type, os, os_version, arch, gpu_vendor):
     # check if the user is already in the database
-    if telemetry_db.execute("SELECT * FROM telemetry WHERE uuid = ?", (uuid,)).fetchone() is None:
-        # increment unique users
-        increment_unique_users()
+    telemetry_db.exists("telemetry", "uuid", (uuid,), not_exists=increment_unique_users)
     do_update(telemetry_db, "telemetry", {
         "uuid": uuid,
         "format_version": format_version,
@@ -57,121 +67,50 @@ def increment_crash_count():
     today = date.today()
     # do some sql magic
     # todo: abstract and generify this
-    telemetry_db.execute("INSERT OR REPLACE INTO crash_count_history (time, crash_count) VALUES (?, COALESCE((SELECT crash_count FROM crash_count_history WHERE time = ?), 0) + 1)", (today, today))
-    telemetry_db.commit()
+    telemetry_db.update("INSERT OR REPLACE INTO crash_count_history (time, crash_count) VALUES (?, COALESCE((SELECT crash_count FROM crash_count_history WHERE time = ?), 0) + 1)", (today, today))
 
 def increment_unique_users():
     today = date.today()
     yesterday = today - timedelta(days = 1)
-    # do some sql magic
-    # todo: abstract and generify this
-    # get unqiue users from today or yesterday
-    current_total_unique_users = telemetry_db.execute("SELECT unique_users_total FROM unique_users_history WHERE time = ?", (today,)).fetchone()
-    if current_total_unique_users is None:
-        current_total_unique_users = telemetry_db.execute("SELECT unique_users_total FROM unique_users_history WHERE time = ?", (yesterday,)).fetchone()
-    if current_total_unique_users is None:
-        current_total_unique_users = 0
-    else:
-        current_total_unique_users = current_total_unique_users[0]
 
-    current_unique_users = telemetry_db.execute("SELECT unique_users FROM unique_users_history WHERE time = ?", (today,)).fetchone()
-    if current_unique_users is None:
-        current_unique_users = 0
-    else:
-        current_unique_users = current_unique_users[0]
-
-    do_update(telemetry_db, "unique_users_history", {
-        "time": today,
-        "unique_users_total": current_total_unique_users + 1,
-        "unique_users": current_unique_users + 1
-    })
-
-def make_statistics():
-    # obtain all telemetry data
-    telemetry_data = telemetry_db.execute("SELECT * FROM telemetry").fetchall()
-    crash_history_data = telemetry_db.execute("SELECT * FROM crash_count_history").fetchall()
-
-    unique_users = len(telemetry_data)
-    os_averages = {}
-    version_average = {}
-
-    for telemetry in telemetry_data:
-        # select the 'os' field
-        _, version, os, time = telemetry
-
-        # process os entries
-        os_name, os_version, os_architecture = os.split("/")
-        # shorten os_version major {version info} -> major
-        os_version = os_version.split(" ")[0]
-        # shorten linux and derivatives versions, e.g. 5.4.0-42-generic -> 5.4.0
-        if os_version.count("-") > 1:
-            os_version = os_version[:os_version.find("-")]  
-        if os_name not in os_averages:
-            os_averages[os_name] = {
-                "avg": 0,
-                "versions": {}
-            }
-            if os_version not in os_averages[os_name]["versions"]:
-                os_averages[os_name]["versions"][os_version] = 0
-            os_averages[os_name]["versions"][os_version] += 1
-            os_averages[os_name]["avg"] += 1
-
-        if version not in version_average:
-            version_average[version] = 0
-        version_average[version] += 1
-
-    # process average 
-    for os_name, os_data in os_averages.items():
-        os_data["avg"] /= unique_users
-        for os_version, _ in os_data["versions"].items():
-            os_data["versions"][os_version] /= unique_users    
-
-    # process version average
-    for version, _ in version_average.items():
-        version_average[version] /= unique_users
-
-    # create crash histogram
-    crash_histogram = {}
-
-    for crash_history in crash_history_data:
-        time, crash_count = crash_history
-        crash_histogram[time] = crash_count
-
-    return {
-        "unique_users": unique_users,
-        "os_stat": os_averages,
-        "version_stat": version_average,
-        "crash_histogram": crash_histogram
-    }
-
-def update_data():
-    print("Updating telemetry data...")
-    # get statistics
-    statistics = make_statistics()
-
-    # make it into json
-    import json
-    statistics_json = json.dumps(statistics)
-
-    # write it to file
-    with open("data/imhex/statistics.json", "w") as fd:
-        fd.write(statistics_json)
-
-    # update current statistics
-    global current_statistics
-    current_statistics = statistics
-    print("Telemetry data updated")
-
-
-def setup_background_task():
-    # setup background task
-    from apscheduler.schedulers.background import BackgroundScheduler
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(update_data, 'interval', hours = 24, id = "update_statistics")
-    scheduler.start()
-
-    # update data now
-    scheduler.modify_job("update_statistics", next_run_time = datetime.now())
+    def process_unique_history(query_result):
+        match len(query_result):
+            case 0:
+                # no data for today or yesterday, insert new data
+                do_update(telemetry_db, "unique_users_history", {
+                    "time": today,
+                    "unique_users_total": 1,
+                    "unique_users": 1
+                })
+            case 1:
+                # might be today is only entry in database, or yesterday is only entry in database
+                if query_result[0][0] == today:
+                    # today is only entry in database, update data
+                    do_update(telemetry_db, "unique_users_history", {
+                        "time": today,
+                        "unique_users_total": query_result[0][1] + 1,
+                        "unique_users": query_result[0][1] + 1
+                    })
+                else:
+                    # yesterday is only entry in database, insert new data
+                    do_update(telemetry_db, "unique_users_history", {
+                        "time": today,
+                        "unique_users_total": query_result[0][1] + 1,
+                        "unique_users": 1
+                    })
+            case 2:
+                # data for today and yesterday, update data
+                today_data = query_result[0]
+                do_update(telemetry_db, "unique_users_history", {
+                    "time": today,
+                    "unique_users_total": today_data[1] + 1,
+                    "unique_users": today_data[1] + 1
+                })
+            
+    
+    # select unique users and unique users total from today and yesterday
+    telemetry_db.fetchall("SELECT unique_users, unique_users_total FROM unique_users_history WHERE time = ? OR time = ?",
+                                    (today, yesterday), callback=process_unique_history)
 
 if __name__ == "__main__":
     # get argv
@@ -180,11 +119,3 @@ if __name__ == "__main__":
         if sys.argv[1] == "increment_crash_count":
             increment_crash_count()
             print("Crash count incremented")
-        elif sys.argv[1] == "make_statistics":
-            statistics = make_statistics()
-            # make it into json
-            import json
-            statistics_json = json.dumps(statistics, indent = 4)
-            with open("data/statistics.json", "w") as fd:
-                fd.write(statistics_json)
-            print("Statistics generated")

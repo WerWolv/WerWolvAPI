@@ -18,7 +18,7 @@ import random
 import tarfile
 import requests
 
-from api.impl.imhex.telemetry import update_telemetry, increment_crash_count, current_statistics, setup_background_task
+from api.impl.imhex.telemetry import update_telemetry, increment_crash_count
 
 api_name = Path(__file__).stem
 app = Blueprint(api_name, __name__, url_prefix = "/" + api_name)
@@ -32,11 +32,10 @@ tips_folder = "tips"
 def setup():
     os.system(f"git -C {app_data_folder} clone https://github.com/WerWolv/ImHex-Patterns --recurse-submodules")
     os.system(f"git -C {app_data_folder} clone https://github.com/file/file")
-    print("Setting up statistics background task...")
-    setup_background_task()
 
 def init():
-    update_data()
+    #update_data()
+    pass
 
 def update_git_repo(repo):
     repo_dir = app_data_folder / repo
@@ -236,23 +235,11 @@ def post_telemetry():
         if not all(key in data for key in required_telemetry_post_fields):
             return Response(status = 400)
         
-        thread = threading.Thread(target = update_telemetry, args = (data["uuid"], data["format_version"], data["imhex_version"], data["imhex_commit"], data["install_type"], data["os"], data["os_version"], data["arch"], data["gpu_vendor"]))
-        thread.daemon = True
-        thread.start()
+        update_telemetry(data["uuid"], data["format_version"], data["imhex_version"], data["imhex_commit"], data["install_type"], data["os"], data["os_version"], data["arch"], data["gpu_vendor"])
     else:
         return Response(status = 400)
 
     return Response(status = 200, response="OK")
-
-@app.route("/telemetry", methods = [ 'GET' ])
-def get_telemetry():
-    if "Authorization" in request.headers:
-        if secrets.compare_digest(request.headers["Authorization"].encode(), config.ImHexApi.SECRET):
-            return current_statistics
-        else:
-            return Response(status = 401)
-    
-    return Response(status = 401)
     
 @app.route("/pattern_count")
 def get_pattern_count():
