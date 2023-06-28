@@ -71,7 +71,6 @@ def increment_crash_count():
 
 def increment_unique_users():
     today = date.today()
-    yesterday = today - timedelta(days = 1)
 
     def process_unique_history(query_result):
         match len(query_result):
@@ -89,7 +88,7 @@ def increment_unique_users():
                     do_update(telemetry_db, "unique_users_history", {
                         "time": today,
                         "unique_users_total": query_result[0][1] + 1,
-                        "unique_users": query_result[0][1] + 1
+                        "unique_users": query_result[0][2] + 1
                     })
                 else:
                     # yesterday is only entry in database, insert new data
@@ -101,16 +100,17 @@ def increment_unique_users():
             case 2:
                 # data for today and yesterday, update data
                 today_data = query_result[0]
+                total_unique_users = today_data[1]
+                today_unique_users = today_data[2]
                 do_update(telemetry_db, "unique_users_history", {
                     "time": today,
-                    "unique_users_total": today_data[1] + 1,
-                    "unique_users": today_data[1] + 1
+                    "unique_users_total": total_unique_users + 1,
+                    "unique_users": today_unique_users + 1
                 })
             
     
-    # select unique users and unique users total from today and yesterday
-    telemetry_db.fetchall("SELECT unique_users, unique_users_total FROM unique_users_history WHERE time = ? OR time = ?",
-                                    (today, yesterday), callback=process_unique_history)
+    # get the last two entries in the database
+    telemetry_db.fetchall("SELECT time, unique_users_total, unique_users FROM unique_users_history ORDER BY time DESC LIMIT 2", (), callback=process_unique_history)
 
 if __name__ == "__main__":
     # get argv

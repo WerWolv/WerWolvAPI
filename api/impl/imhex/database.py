@@ -51,6 +51,7 @@ class async_database:
                     self._database.commit()
         except sqlite3.OperationalError as e:
             self.error_callback(e)
+            print(e)
             if e.sqlite_errorname == 'database is locked':
                 return 'retry'
             else:
