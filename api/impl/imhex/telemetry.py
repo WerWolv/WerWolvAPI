@@ -80,37 +80,28 @@ def increment_unique_users():
                     "time": today,
                     "unique_users_total": 1,
                     "unique_users": 1
-                })
-            case 1:
-                # might be today is only entry in database, or yesterday is only entry in database
-                if query_result[0][0] == today:
-                    # today is only entry in database, update data
+                }) 
+            case 1:  
+                # might be today is only entry in database, or anothery day is entry in database
+                row = query_result[0]
+                _, unique_users_total, unique_users = row
+                if query_result[0][0] == today.isoformat():
+                    # entry is today
                     do_update(telemetry_db, "unique_users_history", {
                         "time": today,
-                        "unique_users_total": query_result[0][1] + 1,
-                        "unique_users": query_result[0][2] + 1
+                        "unique_users_total": unique_users_total + 1,
+                        "unique_users": unique_users + 1
                     })
                 else:
-                    # yesterday is only entry in database, insert new data
+                    # a day before is only entry in database, insert new data
                     do_update(telemetry_db, "unique_users_history", {
                         "time": today,
-                        "unique_users_total": query_result[0][1] + 1,
+                        "unique_users_total": unique_users_total + 1,
                         "unique_users": 1
                     })
-            case 2:
-                # data for today and yesterday, update data
-                today_data = query_result[0]
-                total_unique_users = today_data[1]
-                today_unique_users = today_data[2]
-                do_update(telemetry_db, "unique_users_history", {
-                    "time": today,
-                    "unique_users_total": total_unique_users + 1,
-                    "unique_users": today_unique_users + 1
-                })
             
-    
-    # get the last two entries in the database
-    telemetry_db.fetchall("SELECT time, unique_users_total, unique_users FROM unique_users_history ORDER BY time DESC LIMIT 2", (), callback=process_unique_history)
+    # select latest entry in database
+    telemetry_db.fetchall("SELECT time, unique_users_total, unique_users FROM unique_users_history ORDER BY time DESC LIMIT 1", (), callback=process_unique_history)
 
 if __name__ == "__main__":
     # get argv
