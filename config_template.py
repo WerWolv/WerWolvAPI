@@ -12,6 +12,8 @@ class ImHexApi:
     SECRET = b''
 
     CRASH_WEBHOOK = ""
+    DATABASE_QUEUE_PERIOD = 0.1
+    DATABASE_RETRY_PERIOD = 1
 
 
 def setup():
