@@ -7,10 +7,10 @@ class Common:
     SECRET = b''
 
     # folder used for internal stuff, e.g. caching the repositories
-    DATA_FOLDER = ""
+    DATA_FOLDER = "data"
 
     # Folder exposed through the webserver at /content
-    CONTENT_FOLDER = ""
+    CONTENT_FOLDER = "content"
 
 class ImHexApi:
     # Secret used to verify GitHub's pushes to this API
