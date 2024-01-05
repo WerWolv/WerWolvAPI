@@ -4,3 +4,4 @@ Flask_Caching==2.0.2
 python_dateutil==2.8.2
 Requests==2.31.0
 setuptools==66.1.1
+uWSGI==2.0.23
