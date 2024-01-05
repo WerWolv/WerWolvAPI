@@ -34,7 +34,7 @@ def setup():
     os.system(f"git -C {app_data_folder} clone https://github.com/file/file")
 
 def init():
-    #update_data()
+    update_data()
     pass
 
 def update_git_repo(repo):
