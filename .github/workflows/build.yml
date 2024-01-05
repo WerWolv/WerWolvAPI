@@ -20,17 +20,18 @@ jobs:
     - name: 🛠️ Build using docker
       run: |
         set -xe
-        docker buildx build . --progress=plain -t test
+        docker buildx build . --progress=plain -t werwolvapi_test_img
     
     - name: Run using docker
       run: |
         set -xe
 
-        docker rm -f werwolvapi_test # useful if using act
-        docker run --name werwolvapi_test --rm -d -p 8080:80 test
+        # We make sure to remove everything docker-related because if we use act, it uses the host docker instance
+        docker rm -f werwolvapi_test_cont
+
+        docker run --name werwolvapi_test_cont --rm -d -p 8080:80 werwolvapi_test_img
 
         curl --head -s -w "%{http_code}\n" http://localhost:8080
 
-        docker rm -f werwolvapi_test # useful if using act
-        
-        
+        docker rm -f werwolvapi_test_cont
+        docker rmi -f werwolvapi_test_img
