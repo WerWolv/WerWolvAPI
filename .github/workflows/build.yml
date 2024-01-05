@@ -31,7 +31,7 @@ jobs:
 
         docker run --name werwolvapi_test_cont --rm -d -p 8080:80 werwolvapi_test_img
 
-        curl --head -s -w "%{http_code}\n" http://localhost:8080
+        curl --head -s -w "%{http_code}\n" http://localhost:8080 | grep "200"
 
         docker rm -f werwolvapi_test_cont
         docker rmi -f werwolvapi_test_img
