@@ -10,5 +10,5 @@ Public repository for my main API endpoint found at https://api.werwolv.net
 ## Running
 
 - install dependencies (`pip install -r requirements.txt`)
-- copy config_template.py to config.py (and modify values accordingly)
+- potentially create and put variables in .env according to you needs (see .env.example and config.py)
 - run using `uwsgi --http :9090 --master -w wsgi:app` (the `uwsgi` command should have been installed by the `uwsgi` dependency)
