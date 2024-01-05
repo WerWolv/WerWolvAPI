@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    runs-on: ubuntu-22.04
+    name: 🍎 Build
+    steps:
+    - name: 🧰 Checkout
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: 🛠️ Build using docker
+      run: |
+        set -xe
+        docker buildx build . --progress=plain -t test
+    
+    - name: Run using docker
+      run: |
+        set -xe
+
+        docker rm -f werwolvapi_test # useful if using act
+        docker run --name werwolvapi_test --rm -d -p 8080:80 test
+
+        curl --head -s -w "%{http_code}\n" http://localhost:8080
+
+        docker rm -f werwolvapi_test # useful if using act
+        
+        
