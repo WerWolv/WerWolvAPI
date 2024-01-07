@@ -2,4 +2,4 @@ __pycache__
 data
 content
 logs
-config.py
+.env
