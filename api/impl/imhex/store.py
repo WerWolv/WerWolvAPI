@@ -32,7 +32,7 @@ async def get_pattern_metadata(file_path: str, type_: str) -> str:
     if process.returncode != 0:
         print(stdout.decode())
         print(f"plcli command exited with return code {process.returncode}")
-        return None
+        return ""
 
     return stdout.decode()
 

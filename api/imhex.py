@@ -1,4 +1,4 @@
-from flask import Blueprint, request, Response
+from flask import Blueprint, request, Response, send_file, redirect
 import os
 from pathlib import Path
 import hashlib
@@ -31,7 +31,6 @@ tips_folder = "tips"
 
 def setup():
     os.system(f"git -C {app_data_folder} clone https://github.com/WerWolv/ImHex-Patterns --recurse-submodules")
-    os.system(f"git -C {app_data_folder} clone https://github.com/file/file")
 
 def init():
     update_data()
@@ -47,13 +46,7 @@ def update_data():
     try:
         print("Pulling changes...")
         update_git_repo("ImHex-Patterns")
-        update_git_repo("file")
-        
-        print("Building...")
-        file_repo_dir = app_data_folder / "file"
-        
-        shutil.copytree(f'{file_repo_dir}/magic/Magdir/', app_data_folder / "ImHex-Patterns/magic/standard_magic")
-
+    
         if app_content_folder.exists():
             shutil.rmtree(app_content_folder)
         os.makedirs(app_content_folder)
@@ -153,27 +146,29 @@ def get_update_link(release, os):
     if release == "latest":
         base = f"https://github.com/WerWolv/ImHex/releases/download/{tag}/imhex-{tag[1:]}"
         if os == "win-msi":
-            return f"{base}-win64.msi"
+            return f"{base}-Windows-x86_64.msi"
         elif os == "win-zip":
-            return f"{base}-Windows-Portable.zip"
+            return f"{base}-Windows-Portable-x86_64.zip"
         elif os == "win-zip-nogpu":
-            return f"{base}-Windows-Portable-NoGPU.zip"
+            return f"{base}-Windows-Portable-NoGPU-x86_64.zip"
         elif os == "macos-dmg":
-            return f"{base}-macOS.dmg"
+            return f"{base}-macOS-x86_64.dmg"
         elif os == "macos-dmg-nogpu":
-            return f"{base}-macOS-NoGPU.dmg"
+            return f"{base}-macOS-NoGPU-x86_64.dmg"
         elif os == "linux-flatpak":
             return "https://flathub.org/apps/details/net.werwolv.ImHex"
-        elif os == "linux-deb":
-            return f"{base}-Ubuntu-22.04.deb"
+        elif os == "linux-deb-22.04":
+            return f"{base}-Ubuntu-22.04-x86_64.deb"
+        elif os == "linux-deb-23.04":
+            return f"{base}-Ubuntu-23.04-x86_64.deb"
         elif os == "linux-appimage":
-            return f"{base}.AppImage"
+            return f"{base}-x86_64.AppImage"
         elif os == "linux-arch":
-            return f"{base}-ArchLinux.pkg.tar.zst"
+            return f"{base}-ArchLinux-x86_64.pkg.tar.zst"
         elif os == "linux-fedora-latest":
-            return f"{base}-Fedora-Latest.rpm"
+            return f"{base}-Fedora-Latest-x86_64.rpm"
         elif os == "linux-fedora-rawhide":
-            return f"{base}-Fedora-Rawhide.rpm"
+            return f"{base}-Fedora-Rawhide-x86_64.rpm"
         else:
             return ""
     elif release == "nightly":
@@ -229,3 +224,16 @@ def post_telemetry():
 @app.route("/pattern_count")
 def get_pattern_count():
     return str(len([file for file in (app_data_folder / "ImHex-Patterns" / "patterns").iterdir() if file.is_file()]))
+
+@app.route("/info/<os>/<type>")
+def get_banner_info(os, type):
+    if type == "link":
+        if os == "web":
+            return redirect("https://imhex.werwolv.net")
+    elif type == "image":
+        if os == "web":
+            return send_file(app_data_folder / "web_banner.png")
+        else:
+            return ""
+
+    return redirect("https://imhex.werwolv.net")
