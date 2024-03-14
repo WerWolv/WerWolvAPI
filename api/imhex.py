@@ -112,7 +112,7 @@ def crash_upload():
     
     form_data = {
         'payload_json': (None, json.dumps(data), 'application/json'),
-        'files[0]': ('crash.log', open('crash.log', 'rb'))
+        'files[0]': (file.filename, file.stream, file.mimetype)
     }
 
     return requests.post(config.ImHexApi.CRASH_WEBHOOK, files = form_data).text
