@@ -21,6 +21,8 @@ import requests
 from api.impl.imhex.telemetry import update_telemetry, increment_crash_count
 from api.impl.imhex.store import gen_store, STORE_FOLDERS
 
+from api.impl.imhex.crash_file_parser import crash_log
+
 api_name = Path(__file__).stem
 app = Blueprint(api_name, __name__, url_prefix = "/" + api_name)
 
@@ -69,7 +71,7 @@ def update_data():
         for folder in STORE_FOLDERS:
             shutil.copytree(app_data_folder / "ImHex-Patterns" / folder, app_content_folder / folder, False, shutil.ignore_patterns('_schema.json'))
 
-        print("Done!");
+        print("Done!")
     finally:
         cache.set("store_up_to_date", False)
         cache.set("updater_running", False)
@@ -107,12 +109,17 @@ def crash_upload():
 
     increment_crash_count()
 
-    webhook_data = {
-        "content": "New crash report!"
-    }
+    log = crash_log(file)
+    log.parse()
 
+    if not log.valid:
+        return Response(status = 400)
+    
+    data = log.build_embed()
+    
     form_data = {
-        "file": (file.filename, file.stream, file.mimetype)
+        'payload_json': (None, json.dumps(data), 'application/json'),
+        'files[0]': ('crash.log', open('crash.log', 'rb'))
     }
 
     return requests.post(config.ImHexApi.CRASH_WEBHOOK, files = form_data).text
