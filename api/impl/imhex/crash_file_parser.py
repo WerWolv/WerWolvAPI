@@ -6,8 +6,11 @@ class crash_log:
         self.log_content = log_content
         self.log_lines = log_content.split('\n')
         self.log_lines = [x.strip() for x in self.log_lines]
+        self.valid = False
 
     def parse(self):
+        self.valid = False
+
         # parse the log, lines are formatted like this:
         # [2021-01-01] [INFO] [main] Parsing crash file: /path/to/crash/file
         # we can cut every line by it's last `]` that has a non-number character before it
@@ -48,7 +51,6 @@ class crash_log:
                 break
 
         if len(self.stack_trace) < 3:
-            self.valid = False
             return
 
         # find the relevant stack trace lines
@@ -79,17 +81,15 @@ class crash_log:
                     break
 
         if crash_handler_line == -1:
-            self.valid = False
             return
         
         # translate line number to the original stack trace
         crash_handler_line = len(traverse_stack_trace) - crash_handler_line
-        # increase the line number by 1 to get the first relevant line
-        crash_handler_line += 1
 
         # cut the handler section and only keep 5 relevant lines after the handler
         self.relevant_stack_trace = self.stack_trace[crash_handler_line:crash_handler_line + 5]
-        pass
+        
+        self.valid = True
 
     def build_embed(self):
         # build embed json
