@@ -93,13 +93,11 @@ def pattern_hook():
 @app.route("/crash_upload", methods = [ 'POST' ])
 def crash_upload():
     if "file" not in request.files:
-        print("No file uploaded")
         return Response(status = 400)
 
     file = request.files["file"]
 
     if file.filename == "":
-        print("No filename")
         return Response(status = 400)
 
     increment_crash_count()
@@ -107,20 +105,25 @@ def crash_upload():
     log = crash_log(file.stream.read().decode("utf-8"))
     log.parse()
 
-    if not log.valid:
-        print("Invalid crash log")
-        return Response(status = 400)
-    
-    data = log.build_embed()
-    
-    file.stream.seek(0)
+    if log.valid:
+        data = log.build_embed()
+        
+        file.stream.seek(0)
 
-    form_data = {
-        'payload_json': (None, json.dumps(data), 'application/json'),
-        'file': (file.filename, file.stream, file.mimetype)
-    }
+        form_data = {
+            'payload_json': (None, json.dumps(data), 'application/json'),
+            'file': (file.filename, file.stream, file.mimetype)
+        }
 
-    return requests.post(config.ImHexApi.CRASH_WEBHOOK, files = form_data).text
+        return requests.post(config.ImHexApi.CRASH_WEBHOOK, files = form_data).text
+    else:       
+        file.stream.seek(0)
+
+        form_data = {
+            'file': (file.filename, file.stream, file.mimetype)
+        }
+
+        return requests.post(config.ImHexApi.CRASH_WEBHOOK, files = form_data).text
 
 @app.route("/store")
 def store():   

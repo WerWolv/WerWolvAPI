@@ -19,14 +19,20 @@ class crash_log:
         # remove empty lines
         self.log_lines = [x for x in self.log_lines if x]
 
+        # find the lines
+        welcome_line = next((i for i, line in enumerate(self.log_lines) if 'Welcome to ImHex' in line), -1)
+        commit_line = next((i for i, line in enumerate(self.log_lines) if 'Compiled using commit' in line), -1)
+        os_line = next((i for i, line in enumerate(self.log_lines) if 'Running on' in line), -1)
+        gpu_line = next((i for i, line in enumerate(self.log_lines) if 'Using:' in line), -1)
+
         # first line is 'Welcome to ImHex <version>!'
-        self.version = self.log_lines[0].split(' ')[-1].replace('!', '')
+        self.version = self.log_lines[welcome_line].split(' ')[-1].replace('!', '') if welcome_line != -1 else 'Unknown'
         # second line is the commit hash 'Compiled using commit <branch>@<hash>'
-        self.commit = self.log_lines[1].split(' ')[-1]
+        self.commit = self.log_lines[commit_line].split(' ')[3] if commit_line != -1 else 'Unknown'
         # third line shows the Os and architecture 'Running on <os identifer ( can be longer than one word )>', we can just omit the first two words
-        self.os = ' '.join(self.log_lines[2].split(' ')[2:])
+        self.os = ' '.join(self.log_lines[2].split(' ')[2:]) if os_line != -1 else 'Unknown'
         # fitfh line is the gpu 'Using: '<gpu name>' GPU'
-        self.gpu = self.log_lines[4].split(' ')[1].replace('\'', '')
+        self.gpu = self.log_lines[4].split(' ')[1].replace('\'', '') if gpu_line != -1 else 'Unknown'
         # after that any amount of arbitrary log lines come, until the line 'Wrote crash.json file to <path>'
         # above that line is the crash reason.
 
