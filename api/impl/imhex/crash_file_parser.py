@@ -13,9 +13,14 @@ class crash_log:
 
         # parse the log, lines are formatted like this:
         # [2021-01-01] [INFO] [main] Parsing crash file: /path/to/crash/file
-        # we can cut every line by it's last `]` that has a non-number character before it
-        # collect all the ']' characters in each line
-        self.log_lines = [x[[i for i, char in enumerate(x) if char == ']' and i >= 2][2] + 1:].strip() for x in self.log_lines]
+        # we cut the line after the third bracket and remove the leading whitespace
+        def format_line(line):
+            last_bracket_index = [i for i, char in enumerate(line) if char == ']' and i >= 2][2]
+            if last_bracket_index == -1:
+                return line
+            return line[last_bracket_index + 1:].strip()
+
+        self.log_lines = [format_line(x) for x in self.log_lines]
         # remove empty lines
         self.log_lines = [x for x in self.log_lines if x]
 
