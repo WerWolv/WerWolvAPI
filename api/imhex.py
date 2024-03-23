@@ -103,7 +103,11 @@ def crash_upload():
     increment_crash_count()
 
     log = crash_log(file.stream.read().decode("utf-8"))
-    log.parse()
+
+    try:
+        log.parse()
+    except Exception as e:
+        print(e)
 
     if log.valid:
         data = log.build_embed()
