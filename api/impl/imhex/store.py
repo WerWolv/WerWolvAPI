@@ -22,7 +22,7 @@ def get_all_pattern_metadata(folder: str) -> Dict[str, PatternMetadata]:
     Get all metadata (authors and description) for all patterns in a given folder
     """
 
-    result = subprocess.run(["plcli", "info", "-P", folder], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(["plcli", "info", "-P", folder, "-f", "json"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
         print("plcli not found, skipping metadata retrieval")
         return None
