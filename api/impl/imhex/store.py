@@ -39,7 +39,7 @@ def get_all_pattern_metadata(folder: str) -> Dict[str, PatternMetadata]:
             filepath=filepath,
             description=pattern["description"],
             authors=pattern["authors"],
-            mimes=pattern["MIMEs"],
+            mimes=pattern["mimes"],
         )
         patterns_objs[filepath] = obj
 
