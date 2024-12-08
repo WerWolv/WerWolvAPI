@@ -30,7 +30,7 @@ def get_all_pattern_metadata(folder: str) -> Dict[str, PatternMetadata]:
     try:
         patterns_json = json.loads(result.stdout)
     except json.JSONDecodeError as e:
-        print("Error decoding plcli info output: "+e)
+        print("Error decoding plcli info output: "+str(e))
         return None
 
     patterns_objs = {}
