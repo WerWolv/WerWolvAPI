@@ -22,15 +22,15 @@ def get_all_pattern_metadata(folder: str) -> Dict[str, PatternMetadata]:
     Get all metadata (authors and description) for all patterns in a given folder
     """
 
-    result = subprocess.run(["plcli", "massinfo", "-p", folder], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.run(["plcli", "info", "-P", folder], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if result.returncode != 0:
         print("plcli not found, skipping metadata retrieval")
         return None
     
     try:
         patterns_json = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        print("Error decoding plcli massinfo output")
+    except json.JSONDecodeError as e:
+        print("Error decoding plcli info output: "+e)
         return None
 
     patterns_objs = {}
