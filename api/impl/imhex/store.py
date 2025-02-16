@@ -8,7 +8,42 @@ from pathlib import Path
 import json
 
 
-STORE_FOLDERS = [ "patterns", "includes", "magic", "constants", "yara", "encodings", "nodes", "themes" ]
+STORE_FOLDERS = [ "patterns", "includes", "magic", "constants", "yara", "encodings", "nodes", "themes", "disassemblers" ]
+
+
+async def get_pattern_metadata(file_path: str, type_: str) -> str:
+    """
+    Get the associated metadata value of a pattern file, using the `plcli` tool. Returns None if the tool is not found
+
+    type: metadata type to get. Valid values (as of 2023/08/21): name, authors, description, mime, version
+
+    if any error occurs, returns an empty string
+    """
+
+    std_folder = Path(config.Common.CONTENT_FOLDER) / "imhex" / "includes"
+    
+    if Path(file_path).is_dir():
+        return ""
+
+    # run plcli process
+    process = await asyncio.create_subprocess_exec("plcli", "info", file_path, "-t", type_, "-I", std_folder, stdout=asyncio.subprocess.PIPE)
+    await process.wait()
+
+    stdout, _ = await process.communicate()
+
+    if process.returncode != 0:
+        print(stdout.decode())
+        print(f"plcli command exited with return code {process.returncode}")
+        return ""
+
+    return stdout.decode()
+
+async def semaphore_wrapper(task, semaphore):
+    """
+    Wrap a task inside a semaphore, to limit tasks concurrency
+    """
+    async with semaphore:
+        await task
 
 @dataclass
 class PatternMetadata:
@@ -76,7 +111,7 @@ def gen_store(root_url: str) -> Dict[str, List[Dict]]:
 
                         "authors": [],
                         "desc": "",
-                        "mime": "",
+                        "mime": [],
                         }
                     if folder == "patterns" and patterns_mds and file.name in patterns_mds:
                         md = patterns_mds[file.name]

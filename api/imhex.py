@@ -17,6 +17,7 @@ from datetime import date
 import random
 import tarfile
 import requests
+import traceback
 
 from api.impl.imhex.telemetry import update_telemetry, increment_crash_count
 from api.impl.imhex.store import gen_store, STORE_FOLDERS
@@ -106,8 +107,8 @@ def crash_upload():
 
     try:
         log.parse()
-    except Exception as e:
-        print(e)
+    except Exception:
+        print(traceback.format_exc())
 
     if log.valid:
         data = log.build_embed()
@@ -172,14 +173,18 @@ def get_update_link(release, os):
             return f"{base}-Windows-Portable-NoGPU-x86_64.zip"
         elif os == "macos-dmg":
             return f"{base}-macOS-x86_64.dmg"
+        elif os == "macos-dmg-x86":
+            return f"{base}-macOS-x86_64.dmg"
+        elif os == "macos-dmg-arm":
+            return f"{base}-macOS-arm64.dmg"
         elif os == "macos-dmg-nogpu":
             return f"{base}-macOS-NoGPU-x86_64.dmg"
         elif os == "linux-flatpak":
             return "https://flathub.org/apps/details/net.werwolv.ImHex"
-        elif os == "linux-deb-22.04":
-            return f"{base}-Ubuntu-22.04-x86_64.deb"
-        elif os == "linux-deb-23.04":
-            return f"{base}-Ubuntu-23.04-x86_64.deb"
+        elif os == "linux-deb-24.04":
+            return f"{base}-Ubuntu-24.04-x86_64.deb"
+        elif os == "linux-deb-24.10":
+            return f"{base}-Ubuntu-24.10-x86_64.deb"
         elif os == "linux-appimage":
             return f"{base}-x86_64.AppImage"
         elif os == "linux-arch":
@@ -200,12 +205,18 @@ def get_update_link(release, os):
             return f"{base}/Windows%20Portable%20NoGPU.zip"
         elif os == "macos-dmg":
             return f"{base}/macOS%20DMG.zip"
+        elif os == "macos-dmg-x86":
+            return f"{base}/macOS%20DMG%20x86_64.zip"
+        elif os == "macos-dmg-arm":
+            return f"{base}/macOS%20DMG%20arm64.zip"
         elif os == "macos-dmg-nogpu":
             return f"{base}/macOS%20DMG-NoGPU.zip"
         elif os == "linux-flatpak":
             return "https://flathub.org/apps/details/net.werwolv.ImHex"
-        elif os == "linux-deb":
-            return f"{base}/Ubuntu%2022.04%20DEB.zip"
+        elif os == "linux-deb-24.04":
+            return f"{base}/Ubuntu%2024.04%20DEB.zip"
+        elif os == "linux-deb-24.10":
+            return f"{base}/Ubuntu%2024.10%20DEB.zip"
         elif os == "linux-appimage":
             return f"{base}/Linux%20AppImage.zip"
         elif os == "linux-arch":
@@ -218,6 +229,10 @@ def get_update_link(release, os):
             return ""
     else:
         return ""
+
+@app.route("/download/<release>/<os>")
+def go_to_download(release, os):
+    return redirect(get_update_link(release, os), code=303)
 
 required_telemetry_post_fields = [ "uuid", "format_version", "imhex_version", "imhex_commit", "install_type", "os", "os_version", "arch", "gpu_vendor" ]
 @app.route("/telemetry", methods = [ 'POST' ])
@@ -234,7 +249,11 @@ def post_telemetry():
         if not all(key in data for key in required_telemetry_post_fields):
             return Response(status = 400)
         
-        update_telemetry(data["uuid"], data["format_version"], data["imhex_version"], data["imhex_commit"], data["install_type"], data["os"], data["os_version"], data["arch"], data["gpu_vendor"])
+        corporate_env = 2
+        if "corporate_env" in data:
+            corporate_env = 1 if data["corporate_env"] else 0
+
+        update_telemetry(data["uuid"], data["format_version"], data["imhex_version"], data["imhex_commit"], data["install_type"], data["os"], data["os_version"], data["arch"], data["gpu_vendor"], corporate_env)
     else:
         return Response(status = 400)
 

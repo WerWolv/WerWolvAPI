@@ -15,6 +15,11 @@ class crash_log:
         # [2021-01-01] [INFO] [main] Parsing crash file: /path/to/crash/file
         # we cut the line after the third bracket and remove the leading whitespace
         def format_line(line):
+            if len(line) < 2:
+                return line
+            # check if there are atleast 2 brackets
+            if line.count('[') < 2:
+                return line
             last_bracket_index = [i for i, char in enumerate(line) if char == ']' and i >= 2][2]
             if last_bracket_index == -1:
                 return line
@@ -50,6 +55,11 @@ class crash_log:
         # get crash reason
         self.crash_reason = self.log_lines[crash_line - 1]
 
+        # maybe find the 'Printing stacktrace using implementation: '<implementation>''
+        if 'Printing stacktrace using implementation' in self.log_lines[crash_line + 1]:
+            self.implementation = self.log_lines[crash_line + 1].split(' ')[-1].replace('\'', '')
+            crash_line += 1
+
         # after crash line follows the stack trace
         self.stack_trace = self.log_lines[crash_line + 1:]
 
@@ -61,7 +71,7 @@ class crash_log:
                 break
 
         if len(self.stack_trace) < 3:
-            return
+            self.relevant_stack_trace = self.stack_trace
 
         # find the relevant stack trace lines
 
@@ -90,14 +100,14 @@ class crash_log:
                     crash_handler_line = i
                     break
 
-        if crash_handler_line == -1:
-            return
+        if crash_handler_line == -1 or crash_handler_line == 0:
+            crash_handler_line = len(self.stack_trace) - 1
         
         # translate line number to the original stack trace
-        crash_handler_line = len(traverse_stack_trace) - crash_handler_line
+        crash_handler_line = len(self.stack_trace) - crash_handler_line - 1
 
         # cut the handler section and only keep 5 relevant lines after the handler
-        self.relevant_stack_trace = self.stack_trace[crash_handler_line:crash_handler_line + 5]
+        self.relevant_stack_trace = self.stack_trace[crash_handler_line:crash_handler_line + 10]
         
         self.valid = True
 

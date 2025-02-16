@@ -26,7 +26,7 @@ class Common:
 
 class ImHexApi:
     # Secret used to verify GitHub's pushes to this API
-    SECRET = os.getenv("IMHEXAPI_SECRET")
+    SECRET = os.getenv("IMHEXAPI_SECRET").encode()
 
     # webhook to ping when we get a new crash
     CRASH_WEBHOOK = os.getenv("CRASH_WEBHOOK")

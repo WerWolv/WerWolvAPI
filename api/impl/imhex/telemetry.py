@@ -13,7 +13,8 @@ telemetry_primary_structure = {
     "os_version": "varchar(30)",
     "arch": "varchar(30)",
     "gpu_vendor": "varchar(30)",
-    "time": "datetime default current_timestamp"
+    "time": "datetime default current_timestamp",
+    "corporate_env": "int"
 }
 
 telemetry_crash_count_history_structure = {
@@ -48,7 +49,7 @@ telemetry_db = define_database("imhex/telemetry", telemetry_tables,
 
 current_statistics = {}
 
-def update_telemetry(uuid, format_version, imhex_version, imhex_commit, install_type, os, os_version, arch, gpu_vendor):
+def update_telemetry(uuid, format_version, imhex_version, imhex_commit, install_type, os, os_version, arch, gpu_vendor, corporate_env):
     # check if the user is already in the database
     telemetry_db.exists("telemetry", "uuid", (uuid,), not_exists=increment_unique_users)
     do_update(telemetry_db, "telemetry", {
@@ -61,6 +62,7 @@ def update_telemetry(uuid, format_version, imhex_version, imhex_commit, install_
         "os_version": os_version,
         "arch": arch,
         "gpu_vendor": gpu_vendor,
+        "corporate_env": corporate_env
     })
 
 def increment_crash_count():
