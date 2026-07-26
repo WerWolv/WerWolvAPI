@@ -93,14 +93,14 @@ def gen_store(root_url: str) -> Dict[str, List[Dict]]:
     """
 
     if is_plcli_found():
-        patterns_mds = get_all_pattern_metadata(Path(".") / "content" / "imhex" / "patterns")
+        patterns_mds = get_all_pattern_metadata(Path(config.Common.CONTENT_FOLDER) / "imhex" / "patterns")
     else:
         patterns_mds = None
 
     store = {}
     for folder in STORE_FOLDERS:
         store[folder] = []
-        for file in (Path(".") / "content" / "imhex" / folder).iterdir():
+        for file in (Path(config.Common.CONTENT_FOLDER) / "imhex" / folder).iterdir():
             if not file.is_dir():
                 with open(file, "rb") as fd:
                     data = {
