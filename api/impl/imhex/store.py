@@ -6,6 +6,7 @@ import shutil
 import hashlib
 from pathlib import Path
 import json
+import config
 
 
 STORE_FOLDERS = [ "patterns", "includes", "magic", "constants", "yara", "encodings", "nodes", "themes", "disassemblers" ]
@@ -93,7 +94,7 @@ def gen_store(root_url: str) -> Dict[str, List[Dict]]:
     """
 
     if is_plcli_found():
-        patterns_mds = get_all_pattern_metadata(Path(config.Common.CONTENT_FOLDER) / "imhex" / "patterns")
+        patterns_mds = get_all_pattern_metadata(str(Path(config.Common.CONTENT_FOLDER) / "imhex" / "patterns"))
     else:
         patterns_mds = None
 
