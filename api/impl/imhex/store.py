@@ -52,6 +52,7 @@ class PatternMetadata:
     description: str
     authors: List[str]
     mimes: List[str]
+    pragmas: Dict
 
 def get_all_pattern_metadata(folder: str) -> Dict[str, PatternMetadata]:
     """
@@ -63,7 +64,6 @@ def get_all_pattern_metadata(folder: str) -> Dict[str, PatternMetadata]:
     if result.returncode != 0:
         print("plcli not found, skipping metadata retrieval")
         return None
-    
     try:
         patterns_json = json.loads(result.stdout)
     except json.JSONDecodeError as e:
@@ -77,6 +77,7 @@ def get_all_pattern_metadata(folder: str) -> Dict[str, PatternMetadata]:
             description=pattern["description"],
             authors=pattern["authors"],
             mimes=pattern["mimes"],
+            pragmas=pattern["pragmas"] if "pragmas" in pattern else {}
         )
         patterns_objs[filepath] = obj
 
@@ -114,12 +115,14 @@ def gen_store(root_url: str) -> Dict[str, List[Dict]]:
                         "authors": [],
                         "desc": "",
                         "mime": [],
+                        "pragmas": {}
                         }
                     if folder == "patterns" and patterns_mds and file.name in patterns_mds:
                         md = patterns_mds[file.name]
                         data["authors"] = md.authors
                         data["desc"] = md.description
                         data["mime"] = md.mimes
+                        data["pragmas"] = md.pragmas
                     store[folder].append(data)
 
     return store
